@@ -23,9 +23,9 @@
                     </p>
                     {!! Form::open(['action' => 'MatchsController@store','method'=>'POST']) !!}
                     <div class="form-group px-5">
-                        {{Form::label('score','score')}}
-                        {{Form::number('score','',['class'=>'form-control','placeholder'=>'score'])}}
-                        {{Form::text('id',$match->id,['class'=>'form-control','placeholder'=>'id'])}}
+                        {{Form::label('homeTeam_prono','score')}}
+                        {{Form::number('homeTeam_prono','',['class'=>'form-control','placeholder'=>'score'])}}
+                        {{Form::text('match_id',$match->id,['class'=>'form-control','placeholder'=>'id'])}}
                         {{Form::submit('Save',['class'=>'btn btn-primary mt-2'])}}
                     </div>
                     {!! Form::close() !!}

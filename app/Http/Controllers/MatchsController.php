@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Match;
 use App\Pronostic;
+use Illuminate\Support\Facades\Auth;
 
 class MatchsController extends Controller
 {
@@ -46,9 +47,30 @@ class MatchsController extends Controller
     public function store(Request $request)
     {
         $this->validate($request,[
-            'score'=>'required',
+            'match_id'=>'required'
         ]);
-        return 123;
+
+        //get current user id
+        $user = Auth::user();
+
+        //get match id
+        $match_id = $request->input('match_id');
+
+        //get this user for this match id
+        $ttestst = Pronostic::where('pronogoalUser_id',$user->id)->get();
+        //return $ttestst;
+
+        if (!isset($ttestst)){
+            $pronostic  = new Pronostic;
+            $pronostic->homeTeam_prono = $request->input('homeTeam_prono');
+            $pronostic->awayTeam_prono = $request->input('awayTeam_prono');
+            $pronostic->match_id = $request->input('match_id');
+
+            $pronostic ->save();
+        }else{
+            return "utilisateur deja existant";
+        }
+
     }
 
     /**
