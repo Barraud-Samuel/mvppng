@@ -13,9 +13,10 @@
 
 Route::get('/', 'PagesController@index');
 Route::get('/about', 'PagesController@about');
-Route::get('/ranking', 'PagesController@ranking');
+//Route::get('/ranking', 'PagesController@ranking');
 
 Route::resource('matchs','MatchsController');
+Route::resource('ranking','RankController');
 //Route::resource('pronostics','PronosticsController');
 
 Auth::routes();
