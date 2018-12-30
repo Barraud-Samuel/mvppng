@@ -1,6 +1,6 @@
-<div class="card text-center mt-3">
-    <div class="card-title">
-        <p class="pt-3">jour de la competition : {{$matchWhithoutProno->matchday}}
+<div class="card text-center mt-4">
+    <div class="card-title bg-dark">
+        <p class="pt-3 text-white">jour de la competition : {{$matchWhithoutProno->matchday}}
             <span class="{{($matchWhithoutProno->status == 'INCOMMING')?'badge-warning badge ' : (($matchWhithoutProno->status == 'RUNNING')?'badge-success badge ':'badge badge-primary                                               ')}}">
                         {{($matchWhithoutProno->status == 'INCOMMING')?'à venir' : (($matchWhithoutProno->status == 'RUNNING')?'en cours':'terminé')}}
                     </span>

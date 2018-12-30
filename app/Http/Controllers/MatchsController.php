@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Match;
 use App\Pronostic;
+use App\Results;
 use Illuminate\Support\Facades\Auth;
 
 class MatchsController extends Controller
@@ -23,10 +24,9 @@ class MatchsController extends Controller
     public function index()
     {
         //$matchs = Match::orderBy('created_at', 'desc')->paginate(10);
+        //TODO::Faire un refactor du code et modifier le front pour afficher sur si score est bon ou pas (anciennement sur prono) et afficher le score gagné, faire la page de rank
 
-        //if match -> over => update the prono to true false
-
-
+        //Récuperation des elements de la base de donnée
         $user = Auth::user()->id;
         $pronostics = Pronostic::all()->where('pronogoalUser_id','=',$user)->pluck("match_id");
         $allProno = Pronostic::all()->where('pronogoalUser_id','=',$user);
@@ -35,24 +35,48 @@ class MatchsController extends Controller
         $matchsWhithoutProno = Match::orderBy('matchday','asc')->whereNotIn('id',$pronostics)->paginate(10);
         //return $pronostics;
         //return $user;
-
+        //on boucle sur tous les matchs
         foreach ($allMatch as $match){
-            //echo $match;
-            //return 12;
+            //Si un match est finis
             if ($match->status === "FINISHED"){
                 $matchId = $match->id;
+                //on recupère le prono du match terminé avec le bon utilisateur
                 $pronosticOver = Pronostic::All()->where('match_id','=',$matchId)->where('pronogoalUser_id','=',$user);
-                //echo $match;
-                //echo $pronosticOver;
-                //return $pronosticOver[1]->homeTeam_prono;
                 foreach ($pronosticOver as $pronoOver){
-                    if ($pronoOver->homeTeam_prono === $match->result_goalsHomeTeam && $pronoOver->awayTeam_prono === $match->result_goalsAwayTeam){
-                        $pronoOver->correct_result = true;
-                        $pronoOver ->save();
+                    $result = Results::FindOrfail($pronoOver->id);
+                    //return $result;
+                    //ATTRIBUTION DES POINTS
+                    //score parfait = 5 points
+                    //return $match->result_goalsHomeTeam - $match->result_goalsAwayTeam;
+                    if ($match->result_goalsHomeTeam === $pronoOver->homeTeam_prono && $match->result_goalsAwayTeam ===  $pronoOver->awayTeam_prono){
+                        //si on a le score exact
+                        $result->points_score = 5;
+
+                        $result->points_winner = 0;
+                        $result->points_difference = 0;
+                        $result ->save();
+                    }elseif ($match->result_goalsHomeTeam >= $match->result_goalsAwayTeam  && $pronoOver->homeTeam_prono  >=  $pronoOver->awayTeam_prono || $match->result_goalsHomeTeam <= $match->result_goalsAwayTeam  && $pronoOver->homeTeam_prono  <=  $pronoOver->awayTeam_prono ){
+                        //si on a le bon gagnant
+                        $result->points_winner = 3;
+
+                        $result->points_score = 0;
+                        $result->points_difference = 0;
+                        $result ->save();
+                    }elseif (abs($match->result_goalsHomeTeam - $match->result_goalsAwayTeam) === abs($pronoOver->homeTeam_prono - $pronoOver->awayTeam_prono)){
+                        //si on a la bonne diff
+                        $result->points_difference = 1;
+
+                        $result->points_score = 0;
+                        $result->points_winner = 0;
+                        $result ->save();
+                    }else{
+                        $result->points_score = 0;
+                        $result ->save();
                     }
                 }
             }
         }
+        //affichage de la vue
         return view('pages.matchs')->with('matchsWithProno',$matchsWithProno)->with('matchsWhithoutProno',$matchsWhithoutProno)->with('allMatch',$allMatch)->with('allProno',$allProno);
     }
 
@@ -105,6 +129,16 @@ class MatchsController extends Controller
             $pronostic->pronogoalUser_id =  Auth::user()->id;
 
             $pronostic ->save();
+
+            //quand un prono est creer, on cree aussi un resultat vide que l'on remplira quand le match est fini
+            //(par defaut le resultat est faut (0 partout))
+            $result = new Results;
+            $result->pronostic_id = $pronostic->id;
+            $result->pronogoalUser_id =  Auth::user()->id;
+            $result->points_score = 0;
+            $result->points_difference = 0;
+            $result->points_winner = 0;
+            $result->save();
             return redirect ('/matchs')->with('success','Score enregistré 😉');
         }
 
@@ -118,7 +152,60 @@ class MatchsController extends Controller
      */
     public function show($id)
     {
-        //
+        //$matchs = Match::orderBy('created_at', 'desc')->paginate(10);
+
+        //Récuperation des elements de la base de donnée
+        $user = Auth::user()->id;
+        $pronostics = Pronostic::all()->where('pronogoalUser_id','=',$user)->pluck("match_id");
+        $allProno = Pronostic::all()->where('pronogoalUser_id','=',$user);
+        $allMatch= Match::orderBy('matchday','asc')->where('status','=',$id)->paginate(10);
+        $matchsWithProno = Match::orderBy('matchday','asc')->where('status','=',$id)->whereIn('id',$pronostics)->paginate(10);
+        $matchsWhithoutProno = Match::orderBy('matchday','asc')->where('status','=',$id)->whereNotIn('id',$pronostics)->paginate(10);
+        //return $pronostics;
+        //return $user;
+        //on boucle sur tous les matchs
+        foreach ($allMatch as $match){
+            //Si un match est finis
+            if ($match->status === "FINISHED"){
+                $matchId = $match->id;
+                //on recupère le prono du match terminé avec le bon utilisateur
+                $pronosticOver = Pronostic::All()->where('match_id','=',$matchId)->where('pronogoalUser_id','=',$user);
+                foreach ($pronosticOver as $pronoOver){
+                    //recuperation de la table de stockage de scores
+                    $result = Results::FindOrfail($pronoOver->id);
+                    //ATTRIBUTION DES POINTS
+                    //score parfait = 5 points
+                    //return $result;
+                    if ($match->result_goalsHomeTeam === $pronoOver->homeTeam_prono && $match->result_goalsAwayTeam ===  $pronoOver->awayTeam_prono){
+                        //si on a le score exact
+                        $result->points_score = 5;
+
+                        $result->points_winner = 0;
+                        $result->points_difference = 0;
+                        $result ->save();
+                    }elseif ($match->result_goalsHomeTeam >= $match->result_goalsAwayTeam  && $pronoOver->homeTeam_prono  >=  $pronoOver->awayTeam_prono || $match->result_goalsHomeTeam <= $match->result_goalsAwayTeam  && $pronoOver->homeTeam_prono  <=  $pronoOver->awayTeam_prono ){
+                        //si on a le bon gagnant
+                        $result->points_winner = 3;
+
+                        $result->points_score = 0;
+                        $result->points_difference = 0;
+                        $result ->save();
+                    }elseif ($match->result_goalsHomeTeam - $match->result_goalsAwayTeam === $pronoOver->homeTeam_prono  -  $pronoOver->awayTeam_prono){
+                        //si on a la bonne diff
+                        $result->points_difference = 1;
+
+                        $result->points_score = 0;
+                        $result->points_winner = 0;
+                        $result ->save();
+                    }else{
+                        $result->points_score = 0;
+                        $result ->save();
+                    }
+                }
+            }
+        }
+        //affichage de la vue
+        return view('pages.matchs')->with('matchsWithProno',$matchsWithProno)->with('matchsWhithoutProno',$matchsWhithoutProno)->with('allMatch',$allMatch)->with('allProno',$allProno);
     }
 
     /**
